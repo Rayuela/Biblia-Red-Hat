@@ -1,0 +1,425 @@
+Configuracion de red:
+
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+
+onBoot = yes
+nm_controlled = no 
+bootroto= Static
+IPADDR=
+NETMASK=
+--------------------------------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+
+ip a <----- visualizar si estan bien configuradas las redes ( muestra ip y mascara )
+ifconfig <----- visualizar si estan bien configuradas las redes ( muestra ip y mascara )
+---------------------------------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+Despues de configurar la red se levanta el servicio
+
+service network restart
+para habilitar
+
+ifdown eth0 <---- bajar
+ifup eth0 <---- levantar
+
+
+-----------------------------vixcp-----------------------------------
+para ver si el servicio esta levantado:
+
+service  vsftpd status 
+----------------------------------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+instalacion y creacion de repositorio 
+
+para montar imagen para empezar creacion de repositorios:
+
+mount –o loop /dev/cdrom /mnt/ ( cualquiera de los 2 sirve)
+mount -o loop /dev/sr0 /mnt
+ls/mnt (mostrar dispositivos montados)
+ 
+Para desmontar: 
+
+unmount /mnt <---- desmonta
+
+
+Luego se instalan los packeages
+
+instalar con privilegios :
+
+cd /mnt/Packages/ <--------- entramos a packages para instalar los privilegios
+
+(rpm -ivh .----------) ( este es un ejemplo)
+
+rpm -ivh deltarpm
+
+rpm -ivh python-deltarpm
+
+rpm -ivh createrepo.....
+
+rpm -ivh vsftp....
+
+Luego de esto se crea el directorio donde se alojaran los repositorios
+
+mkdir –p /var/ftp/pub/redhat ( este puede ser cualquier nombre)
+
+Copiar contenido de la carpeta packeages al directorio creado
+
+cp –ar /mnt/Packages/*.* /var/ftp/pub/redhat/
+
+
+copia del repositorio original :
+
+
+cp /etc/yum.repos.d/rhel-source.repo /etc/yum.repos.d/ftp.repo <---- nombre del repositorio
+
+edita la copia:
+vi /etc/yum.repos.d/ftp.repo
+
+Servidor
+
+([ftp.repo]
+name= repositorio ftp
+baseurl= file:///var/ftp/pub/redhat/
+enable=1
+gpcheck=0
+gpkey= se mantiene
+
+Cliente
+
+([ftp.repo]
+name= repositorio ftp
+baseurl= ftp://10.10.10.1/pub/redhat/
+enable=1
+gpcheck=0
+#gpkey= se mantiene <----------- comentar en el cliente
+
+se borra lo demas
+)
+
+CREACION DE REPOSITORIO
+
+createrepo /var/ftp/pub/redhat
+
+ls -l /var/ftp/pub/redhat/ <----- visualiza el contenido del repositorio
+
+DESPUES DE ESTE PASO LIMPIAR YUM
+
+yum clean all
+ yum update
+yum install -y tree
+yum repolist <---- muestra si esta funcionando
+---------------------------------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+LUEGO LEVANTAR SERVICIO VSFTPD
+
+service vsftpd restart o service vsftpd start
+-----------------------------------------------------------------
+--------------------------------------------------------------
+yum install -y mysql*
+chkconfig mysqld on
+--------------------------------------------------------------
+Configuracion dhcp
+
+yum install –y dhcp* <---- instalamos el servicio dhcp
+
+service dhcpd status <----- vemos si el servicio esta instalado 
+
+service iptables stop <---- detenemos los servicios del firewall
+
+tiene que decir que el servicio dhcpd esta detenido (stoped)
+
+copiar y pegar archivo
+
+cp /usr/share/doc/dhcp(version del dhcp, no la common)/dhcpd.conf.sample /etc/dhcp/dhcpd.conf <---- se copia porque el archivo aparece vacio por defecto
+
+vi /etc/dhcp/dhcpd.conf <----- abrimos el archivo para editarlo (editar "subnet" y colocar la ip de la red y la mascara)
+
+default-lease-time 600;
+max-lease-time 7200;
+
+subnet 192.168.1.0 netmask 255.255.255.0 { <---- "ip actual" netmask "mascara actual" 
+   range 192.168.1.10 192.168.1.100;       <---- (se asigna el rango de direcciones que puede ubicar, en este casi hay 15 direcciones de rango)
+}
+
+host fantasia {
+   hardware ethernet 00:A0:78:8E:9E:AA;
+   fixed-address 192.168.1.4;
+}
+
+en la parte del subnet uds colocan la ip y la mascara (les recomiendo que coloquen las misma red en la que esta configurada su servidor).
+Y donde dice range colocan el rango de direcciones ip que van a entregar (recuerden colocar bien las direcciones dependiendo de su mascara, 
+si su red es 10.10.10.0/24 eso significa que en el range tienen que colocar 10.10.10.x(esto significa cualquier numero).
+
+Las ultimas líneas de este código sirve para asignar una dirección especifica dentro de mi rango a un equipo dependiendo de la dirección mac 
+(dirección física de la tarjeta de red), en donde dice hardware-ethernet colocamos la mac del cliente y en fixed-address colocamos la dirección 
+especifica que le queremos dar a ese equipo al momento de conectarse. 
+
+Se guardan cambios !!
+
+service dhcpd restart <----- reiniciar servicio dhcp 
+
+chkconfig dhcpd on <----- Para que un servicio sea ejecutado durante el proceso de arranque del sistema
+
+en el caso de que no inicie el servicio dhcp vuelvan a abrir el archivo de configuración y revisen, ya que este archivo es mañoso y tiene que estar todo muy bien escrito.
+
+CLIENTE
+Desde el cliente tenemos que configurar el enlace que seria el eth0 y dejarlo en dhcp
+Como los 2 equipos están en host-only y el computador esta sin internet debería buscar la primera fuente de dhcp seria su servidor debería darles esa ip
+
+--------------------------------------------------------------
+--------------------------------------------------------------
+yum install -y httpd* <----- instalacion de apache
+yum install -y php
+chkconfig --list
+chkconfig httpd on
+--------------------------------------------------------------
+yum install –y httpd <---- instalamos httpd
+
+service httpd status <---- revisamos que el servicio ya este disponible, debe decirle que esta stopped, eso significa que quedo bien instalado.
+
+service httpd start <----- subir el servicio
+
+chkconfig httpd on <------ para que el proceso se ejecute al iniciar la maquina virtual
+
+vi /etc/httpd/conf/httpd.conf <----- editamos el archivo
+
+service httpd restart <----- reiniciamos el servicio
+
+vi /var/www/html/index.html <----- creamos un archivo con extensión html, dentro del archivo generamos una estructura basica de html 
+
+guardan y esta listo las configuraciones del servidor
+
+--------------------------------------------------------------
+CLIENTE
+
+Desde el cliente, si funciono todo bien la parte del servicio dhcp deberían tener una ip que este dentro de la misma red y deberían poder ver 
+el archivo que dejaron dentro de la carpeta /var/www/html del servidor. Para hacer esto entramos al navegador de nuestro cliente, y en la barra 
+de direcciones colocamos la ip de nuestro servidor y el puerto que en este caso esta por defecto el 80. Por ejemplo:
+
+10.10.10.1:80
+
+y debería mostrarles su pagina html.
+
+Ahora tenemos que asígnale una dns a esa dirección para eso nos metemos a la consola del cliente y buscamos el archivo hosts que se encuentra en 
+el /etc y lo abrimos con algún editor de texto 
+
+vi /etc/hosts
+
+y debajo de todo el contenido de ese archivo colocamos la ip de nuestro servidor seguido de un espacio y colocamos el dns que queramos
+
+10.10.10.1 inacap.cl
+
+guardamos y volvemos a nuestro navegador y colocamos Inacap.cl y debería aparecer nuestra pagina html.
+
+
+--------------------------------------------------------------
+Creacion de archivo swap
+
+Se debe crear un archivo con el tamaño indicado por el profesor... ejemplo : 
+
+dd if=/dev/zero of=/file.swap bs=1024 count=512000 (  en el archivo que he dado en llamar "file.swap" que contiene 512000 
+blocs de 1024 bytes, cada uno, es decir, aproximativamente, es un archivo de 512 Mb (524 Mb). 
+
+Luego formatear archivo para que sea habilitado como swap
+
+mkswap /file.swap 512000 ( es necesario colocar el tamaño del archivo con este comando ) 
+
+Luego para activar el archivo swap se ejecuta esto:
+
+mount //dev/sda3 ( o el numero de la particion creada)
+
+swapon /file.swap ( este archivo se agrega al existente )
+
+FALTA AGREGAR CUANDO SE QUIERE ASIGNAR A OTRO DISCO !!!!
+
+------------------------------------------------------------------
+--------------------------------------------------------------
+--------------------------------------------------------------
+Crear Particiones:
+
+fdisk /dev/sda <----- disco principal
+fdisk /dev/sdb <----- disco sin formato
+
+fdisk -l ( muestra las particiones existentes y su ruta)
+
+Para crear particiones en un disco se debe mirar la ruta donde esta ubicado y luego ir con el comando fdisk ejemplo:
+
+fdisk /dev/sda ( esto puede cambiar, podria ser tambien /dev/sdb o /dev/sda1)
+
+Una vez dentro para ver los comandos y ayuda precionamos m
+y si queremos crear particiones se preciona la letra n
+
+Aparece esto:
+
+Orden (m para obtener ayuda): n
+Acción de la orden
+   e   Partición extendida
+   p   Partición primaria (1-4)
+
+Se prioriza las particiones primarias pero si se quieren mas particiones se deben crear 3 primarias y luego una extendida
+que funcionara como contenedor de otras particiones... ejemplo: 
+
+p
+Número de partición (1-4): 3 ( numero de la particion del 1 al 4)
+Primer cilindro (1-19457, valor predeterminado 1): (valor del cilindro inicial)
+Último cilindro, +cilindros o +tamaño{K,M,G} (1-3232, valor predeterminado 3232): ( Tamaño del cilindro en Kilobytes, megas o gigas, ejemplo: +5G )
+Se está utilizando el valor predeterminado 3232
+
+Luego de crear la particion se puede probar que el kernel haya leido la particion con
+
+partprobe
+
+Luego hacer un fdisk -l para ver las particiones
+
+guardar los cambios :wq!
+
+Si se pide montar la particion se usa el comando
+
+mount //dev/sda3 ( o el numero de la particion creada)
+
+mkfs.ext4 /dev/sda3 <------------- le damos el formato a la particion seleccionada
+
+------------------------------------------------------------------
+
+-------------------------------------------------------------------
+
+------------------------------------------------------------------
+
+------------------------------------------------------------------
+
+-------------------------------------------------------------------
+
+------------------------------------------------------------------
+
+-------------------------------------------------------------------
+
+------------------------------------------------------------------
+Selinux
+
+/usr/sbin/getenforce <----- ver el estado (enforcing, estado activo)
+
+getenforce <---- devuelve informacion
+
+setenforce <----- cambia el estado
+/usr/sbin/setenforce para cambiar a estado (modo permisivo N°0 o modo obediente N°1)
+
+modo permisivo: deshabilita las negaciones de las acciones del sistema
+
+vi /etc/selinux/config <---- para editar el estado de selinux
+
+para guardar los cambios efectuados REINICIAR.
+
+cd /mnt/Packages
+
+ls -Z vsftpd <------ visualizar los permisos
+
+
+service vsftpd start
+----------------------------------------------------------------
+firewall
+
+setup
+
+restorecon -r /var/ftp/pub
+----------------------------------------------------------------
+
+-------------------------------------------------------------------
+instalacion del yum 
+
+yum install tree
+-------------------------------------------------------------------
+tarea Programada//Script
+
+crontab -e  
+
+40 22 11 11 * touch/root/uno}
+
+crontab -l
+
+ejemplo: 
+
+45 * * * * pwd > /root/aqui
+35 12 07 11 * tar -czf /root/etc.tar.gz /etc
+* * 8 * * ping -c 3 127.0.0.1 > /dev/pts/l
+15 20 07 11 * ls -l /etc > /root/algo
+--------------------------------------------------------
+script.sh
+
+#! /bin/bash
+
+ping -c 5 172.15.10.1
+----------------------------------------------------------------
+chmod  a+x script.sh
+
+sh script.sh
+
+./ script.sh
+--------------------------------------------------------------
+
+#! /bin/bash 
+ping -e 3 127.0.0.1
+
+vi ping.sh
+chmod a+x ping.sh
+sh.ping.sh
+----------------------------------------------------------------
+cliente
+
+ll /etc/yum.repos.d/
+
+cat /etc/yum.repos.d/repolocal.repo
+
+scp /etc /yum.repos.d/ftp.repo ddfrroot@172.15.10.5/etc/repos.d/ 
+
+--------------------------------------------------------------
+revise=
+nice=
+--------------------------------------------------------------
+
+get
+
+pwd 
+
+ls -Z vstpd/ftp/pub/
+
+Busqueda de procesos
+
+ps aux |grep alumno1 = listado de procesos arrancados
+
+gnome-system-monitor
+
+top= muestra datos del sistema
+
+m= mayor consumo de memoria
+c= porcentaje de cpu
+h= ayuda
+u=usuarios
+r= prioridad
+
+cat /proc/partitions
+
+kill -l <---- despliega una tabla con los numeros de señales definidos
+
+kill -9 3254 envia a un numero de señal 9 a un proceso con PID 3254
+
+1 Reinicia 
+9 fuerza a un proceso a terminar inmediatamente
+15 solicita un proceso luego de una limpieza 
+
+---------------------------------------------------------------------
+
+cp *archivos*/media/memoriaUSB
+
+_______________________________________________________________________
+
+
+
+
+DHCP= DIRECCION MAC Y FISICA // manera insegura y segura // service dhcpd (start, status, restart) //modificar archivo de configuracion --> dhcpd.conf( se ubica dentro de etc) (se genera el archivo pero no tiene nada escrito y envia a un archivo ejemplo) 
+queda permanente pero no levantado // para levantarlo *chkconfig dhcpd on* // 
+WEB=
+
